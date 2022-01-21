@@ -1,3 +1,5 @@
+extern crate core;
+
 mod parser;
 mod dom;
 mod css;
