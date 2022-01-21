@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::iter::Peekable;
 use std::str::CharIndices;
-use proc_macro::bridge::PanicMessage::String;
 use crate::dom;
 
 pub struct Parser {
@@ -39,14 +38,15 @@ impl Parser {
     // 消耗一个字符
     // 返回当前的字符，并且 pos 指向下一个字符位置
     fn consume_char(&mut self) -> char {
+
+        // 解析注释
+        if self.input.starts_with("<!--") {
+            // Do something
+        }
+
         let mut iter = self.input[self.pos..].char_indices().peekable();
         // 获取下一个的值
         let (_, cur_char) = iter.next().unwrap();
-
-        // 忽略注释
-        if cur_char == '<' && self.starts_with("<!--") {
-            self.parse_comment(iter);
-        }
 
         // 获取下一个的值的位置
         // 如果 `unwrap` 后的值是 `None`，则返回一个默认值 `(1, ' ')`
@@ -56,32 +56,9 @@ impl Parser {
     }
 
     // Parse comment, like `<!-- contents -->`
-    fn parse_comment(&mut self, mut iter: Peekable<CharIndices>) {
-        // 消费掉 3 个字符（<!--）
-        // iter.next();iter.next();iter.next();
-        iter.skip(3);
-        let mut closing_str = String::new();
-        loop {
-
-            // 碰到文档结束，说明没有闭合标签
-            assert_eq!(self.eof(), false);
-
-            // 已匹配结束
-            if closing_str == "-->" {
-                break;
-            }
-
-            // 更新 pos 位置
-            let (next_pos, cur_char) = iter.next().unwrap_or((1, ' '));
-            self.pos = next_pos;
-
-            // 碰到结束标签
-            if cur_char == '-' {
-                closing_str.push(cur_char);
-            }
-
-        }
-    }
+    // fn parse_comment(&mut self, &mut iter: Peekable<CharIndices>) {
+    //
+    // }
 
     // Consume characters until `test` returns false
     // 条件循环消耗
@@ -109,7 +86,7 @@ impl Parser {
     // 即标签名或者属性名只支持 `a-zA-Z0-9`
     fn parse_tag_name(&mut self) -> String {
         self.consume_while(|c| match c {
-            'a'...'z' | 'A'...'Z' | '0'...'9' => true,
+            'a'..='z' | 'A'..='Z' | '0'..='9' => true,
             _ => false
         })
     }
