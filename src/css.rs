@@ -2,16 +2,16 @@ use core::panicking::panic;
 
 // A CSS stylesheet is a series of rules.
 // CSS 样式表是一系列规则
-struct Stylesheet {
-    rules: Vec<Rule>
+pub struct Stylesheet {
+    pub rules: Vec<Rule>
 }
 
 // A rule includes one or more selectors separated by commas
 // followed by a series of declarations enclosed in braces.
 // Rule 包括一个或多个用逗号分隔的选择器，后跟一系列用大括号括起来的声明。
-struct Rule {
-    selectors: Vec<Selector>,
-    declarations: Vec<Declaration>
+pub struct Rule {
+    pub selectors: Vec<Selector>, // .box
+    pub declarations: Vec<Declaration> // 属性声明：[{name:value}]
 }
 
 // A selector can be a simple selector, or it can be a chain of selectors joined by combinators.
@@ -23,14 +23,15 @@ struct Rule {
 // If the tag name is empty or '*' then it is a "universal selector" that can match any tag.
 // 如果标签名称为空或'*'，那么它是一个可以匹配任何标签的“通用选择器”
 
-enum Selector {
+#[deriving(Show)]
+pub enum Selector {
     Simple(SimpleSelector)
 }
 
-struct SimpleSelector {
-    tag_name: Option<String>,
-    id: Option<String>,
-    class: Vec<String>
+pub struct SimpleSelector {
+    pub tag_name: Option<String>,
+    pub id: Option<String>,
+    pub class: Vec<String>
 }
 
 /*
@@ -74,8 +75,8 @@ impl Selector {
 // 一个 "Declaration" 只是一个 name/value 的键值对，用冒号分隔并以分号结尾
 // 例如："margin: auto;" 是一个 "Declaration"
 struct Declaration {
-    name: String,
-    value: String
+    pub name: String,
+    pub value: String
 }
 
 // supports only a handful of CSS's many value types.

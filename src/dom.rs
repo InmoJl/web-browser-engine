@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 pub struct ElementData {
-    tag_name: String,
-    attributes: AttrMap
+    pub tag_name: String,
+    pub attributes: AttrMap
 }
 
 pub type AttrMap = HashMap<String, String>;
@@ -13,8 +13,8 @@ pub enum NodeType {
 }
 
 pub struct Node {
-    children: Vec<Node>,
-    node_type: NodeType
+    pub children: Vec<Node>,
+    pub node_type: NodeType
 }
 
 // 生成一个文本节点
