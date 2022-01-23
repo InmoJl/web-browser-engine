@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use std::iter::Peekable;
-use std::str::CharIndices;
 use crate::dom;
 
 pub struct Parser {

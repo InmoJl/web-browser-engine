@@ -1,7 +1,6 @@
-use crate::css::Stylesheet;
 use crate::layout::BoxType::{BlockNode, InlineNode};
 use crate::style::{ StyledNode, Display };
-use crate::style::Display::Block;
+use std::default::Default;
 
 /// Layout is all about boxes. A box is a rectangular section of a web page. It has a width,
 /// a height, and a position on the page.
@@ -18,25 +17,28 @@ use crate::style::Display::Block;
 
 /// CSS box model. All sizes are in px.
 /// CSS 盒子模型。所有尺寸均以 px 为单位
-struct Dimensions {
+#[derive(Clone, Copy, Default, Debug)]
+pub struct Dimensions {
     /// 内容区域相对于文档原点的位置：
-    content: Rect,
+    pub content: Rect,
 
     /// Surrounding edges:
     /// 周围边距
-    padding: EdgeSizes,
-    border: EdgeSizes,
-    margin: EdgeSizes
+    pub padding: EdgeSizes,
+    pub border: EdgeSizes,
+    pub margin: EdgeSizes
 }
 
-struct Rect {
+#[derive(Clone, Copy, Default, Debug)]
+pub struct Rect {
     x: f32,
     y: f32,
     width: f32,
     height: f32
 }
 
-struct EdgeSizes {
+#[derive(Clone, Copy, Default, Debug)]
+pub struct EdgeSizes {
     left: f32,
     right: f32,
     top: f32,
@@ -111,7 +113,7 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
     for child in &style_node.children {
         match child.display() {
             Display::Block => root.children.push(build_layout_tree(child)),
-            Display::Inline => root.get_inline_container().children.push(build_layout_tree(chlld)),
+            Display::Inline => root.get_inline_container().children.push(build_layout_tree(child)),
             Display::Node => {}
         }
     }
@@ -119,7 +121,8 @@ fn build_layout_tree<'a>(style_node: &'a StyledNode<'a>) -> LayoutBox<'a> {
     root
 }
 
-impl LayoutBox {
+impl<'a> LayoutBox<'a> {
+
     fn new(box_type: BoxType) -> LayoutBox {
         LayoutBox {
             box_type,
@@ -130,7 +133,7 @@ impl LayoutBox {
 
     // Where a new inline child should go.
     // 一个新的内联子元素应该去哪里
-    fn get_inline_container(&mut self) -> &mut LayoutBox {
+    fn get_inline_container(&mut self) -> &mut LayoutBox<'a> {
         match self.box_type {
             InlineNode(_) | BoxType::AnonymousBlock => self,
             BlockNode(_) => {
@@ -139,7 +142,7 @@ impl LayoutBox {
                 // 如果我们刚刚生成了一个匿名块框，请继续使用它
                 // 否则，创建一个新的
                 match self.children.last() {
-                    Some(&LayoutBox {box_type: BoxType::AnonymousBlock,..}) => {}
+                    Some(&LayoutBox {box_type: BoxType::AnonymousBlock, ..}) => {}
                     _ => self.children.push(LayoutBox::new(BoxType::AnonymousBlock))
                 }
                 self.children.last_mut().unwrap()

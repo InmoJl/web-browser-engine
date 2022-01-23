@@ -1,4 +1,3 @@
-use core::panicking::panic;
 
 // A CSS stylesheet is a series of rules.
 // CSS 样式表是一系列规则
@@ -9,6 +8,7 @@ pub struct Stylesheet {
 // A rule includes one or more selectors separated by commas
 // followed by a series of declarations enclosed in braces.
 // Rule 包括一个或多个用逗号分隔的选择器，后跟一系列用大括号括起来的声明。
+#[derive(Debug)]
 pub struct Rule {
     pub selectors: Vec<Selector>, // .box
     pub declarations: Vec<Declaration> // 属性声明：[{name:value}]
@@ -23,10 +23,12 @@ pub struct Rule {
 // If the tag name is empty or '*' then it is a "universal selector" that can match any tag.
 // 如果标签名称为空或'*'，那么它是一个可以匹配任何标签的“通用选择器”
 
+#[derive(Debug)]
 pub enum Selector {
     Simple(SimpleSelector)
 }
 
+#[derive(Debug)]
 pub struct SimpleSelector {
     pub tag_name: Option<String>,
     pub id: Option<String>,
@@ -73,13 +75,15 @@ impl Selector {
 // For example, "margin: auto;" is a declaration. For example, "margin: auto;" is a declaration.
 // 一个 "Declaration" 只是一个 name/value 的键值对，用冒号分隔并以分号结尾
 // 例如："margin: auto;" 是一个 "Declaration"
-struct Declaration {
+#[derive(Debug)]
+pub struct Declaration {
     pub name: String,
     pub value: Value
 }
 
 // supports only a handful of CSS's many value types.
 // 仅支持少数 CSS 的值类型
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Keyword(String),
     Length(f32, Unit),
@@ -87,11 +91,13 @@ pub enum Value {
     // insert more values here
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Unit {
     Px,
     // insert more units here
 }
 
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Color {
     r: u8,
     g: u8,
@@ -164,9 +170,9 @@ impl Parser {
             }
         }
 
-        /// Return selectors with highest specificity first, for use in matching.
-        /// 首先返回具有最高优先级的选择器，用于匹配
-        /// 比较选择器
+        //  Return selectors with highest specificity first, for use in matching.
+        // 首先返回具有最高优先级的选择器，用于匹配
+        // 比较选择器
         selectors.sort_by(|a, b| b.specificity().cmp(&a.specificity()));
 
         return selectors;
@@ -204,6 +210,90 @@ impl Parser {
 
         selector
     }
+
+    /// Parse a list of declarations enclosed in `{ ... }`.
+    /// 解析包含在 `{ ... }` 中的声明列表
+    fn parse_declarations(&mut self) -> Vec<Declaration> {
+        assert_eq!(self.consume_char(), '{');
+
+        let mut declarations = Vec::new();
+        loop {
+            self.consume_whitespace();
+            if self.next_char() == '}' {
+                self.consume_char();
+                break;
+            }
+
+            declarations.push(self.parse_declaration());
+        }
+
+        declarations
+    }
+
+    /// Parse one `<property>: <value>;` declaration.
+    /// /// 解析一个 `<property>: <value>;` 声明
+    fn parse_declaration(&mut self) -> Declaration {
+        let property_name = self.parse_identifier();
+        self.consume_whitespace();
+        assert_eq!(self.consume_char(), ':');
+        self.consume_whitespace();
+        let value = self.parse_value();
+        self.consume_whitespace();
+        assert_eq!(self.consume_char(), ';');
+
+        Declaration {
+            name: property_name,
+            value
+        }
+    }
+
+    /// 解析属性值
+    fn parse_value(&mut self) -> Value {
+        match self.next_char() {
+            '0'..='9' => self.parse_length(),
+            '#' => self.parse_color(),
+            _ => Value::Keyword(self.parse_identifier())
+        }
+    }
+
+    fn parse_length(&mut self) -> Value {
+        Value::Length(self.parse_float(), self.parse_unit())
+    }
+
+    fn parse_float(&mut self) -> f32 {
+        let s = self.consume_while(|c| match c {
+            '0'..='9' | '.' => true,
+            _ => false
+        });
+
+        s.parse().unwrap()
+    }
+
+    fn parse_unit(&mut self) -> Unit {
+        match &*self.parse_identifier().to_ascii_lowercase() {
+            "px" => Unit::Px,
+            _ => panic!("unrecognized unit")
+        }
+    }
+
+    fn parse_color(&mut self) -> Value {
+        assert_eq!(self.consume_char(), '#');
+        Value::ColorValue(Color {
+            r: self.parse_hex_pair(),
+            g: self.parse_hex_pair(),
+            b: self.parse_hex_pair(),
+            a: 255
+        })
+    }
+
+    fn parse_hex_pair(&mut self) -> u8 {
+        let s = &self.input[self.pos .. self.pos + 2];
+        self.pos += 2;
+        u8::from_str_radix(s, 16).unwrap()
+    }
+
+
+
 
     /// Parse a property name or keyword
     /// 解析属性名称或关键字

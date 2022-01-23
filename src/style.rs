@@ -74,33 +74,33 @@ fn matches(elem: &ElementData, selector: &Selector) -> bool {
 /// 如果元素没有匹配的类、ID 或标签名称，则返回 false。
 fn matches_simple_selector(elem: &ElementData, selector: &SimpleSelector) -> bool {
 
-    /// Check type selector
-    /// 如果选择器的标签名跟元素的标签名不匹配，则 false；div != p
+    // Check type selector
+    // 如果选择器的标签名跟元素的标签名不匹配，则 false；div != p
     if selector.tag_name.iter().any(|name| elem.tag_name != *name) {
         return false;
     }
 
-    /// Check ID selector
-    /// id 不匹配
+    // Check ID selector
+    // id 不匹配
     if selector.id.iter().any(|id| elem.id() != Some(id)) {
         return false;
     }
 
-    /// Check class selectors
-    /// 没有类名匹配
+    // Check class selectors
+    // 没有类名匹配
     let elem_classes = elem.classes();
     if selector.class.iter().any(|class| !elem_classes.contains(&**class)) {
         return false;
     }
 
-    /// We didn't find any non-matching selector components.
-    /// 都匹配
+    // We didn't find any non-matching selector components.
+    // 都匹配
     return true;
 
-    /**
-    Rust note:
-    此函数使用 any 方法，如果迭代器包含通过所提供测试的元素，则该方法返回 true。
-    这与 Python（或 Haskell）中的 any 函数或 JavaScript 中的 some 方法相同。
+    /*
+        Rust note:
+        此函数使用 any 方法，如果迭代器包含通过所提供测试的元素，则该方法返回 true。
+        这与 Python（或 Haskell）中的 any 函数或 JavaScript 中的 some 方法相同。
      */
 }
 
@@ -115,8 +115,8 @@ type MatchedRule<'a> = (Specificity, &'a Rule);
 /// If `rule` matches `elem`, return a `MatchedRule`. Otherwise return `None`.
 /// 如果 `rule` 匹配 `elem`，则返回 `MatchedRule`。否则返回 “None”
 fn match_rule<'a>(elem: &ElementData, rule: &'a Rule) -> Option<MatchedRule<'a>> {
-    /// Find the first (highest-specificity) matching selector.
-    /// 查找到第一个（最高优先级）匹配选择器。
+    // Find the first (highest-specificity) matching selector.
+    // 查找到第一个（最高优先级）匹配选择器。
     rule.selectors.iter()
         .find(|selector| matches(elem, *selector))
         .map(|selector| (selector.specificity(), rule))
@@ -146,8 +146,8 @@ fn specified_values(elem: &ElementData, stylesheet: &Stylesheet) -> PropertyMap 
     let mut values: PropertyMap = HashMap::new();
     let mut rules = matching_rules(elem, stylesheet);
 
-    /// Go through the rules from lowest to highest specificity.
-    /// 通过从最低到最高优先级的规则
+    // Go through the rules from lowest to highest specificity.
+    // 通过从最低到最高优先级的规则
     rules.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
     for (_, rule) in rules {
         for declaration in &rule.declarations {
@@ -183,7 +183,7 @@ impl<'a> StyledNode<'a> {
     /// Return the specified value of a property if it exists, otherwise `None`.
     /// 如果存在，则返回属性的指定值，否则返回 `None`
     pub fn value(&self, name: &str) -> Option<Value> {
-        self.specified_values.get(name).map(|v| *v.clone())
+        self.specified_values.get(name).map(|v| v.clone())
     }
 
     /// The value of the `display` property (defaults to inline).
