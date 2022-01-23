@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use crate::dom::{ElementData, Node};
-use crate::css::{SimpleSelector, Specificity, Stylesheet};
-use crate::css::Selector;
-use crate::css::Rule;
+use crate::css::{SimpleSelector, Specificity, Stylesheet, Selector, Rule, Value};
 use crate::dom::NodeType;
 
 /// This article will cover what the CSS standard calls assigning property values,
@@ -23,11 +21,18 @@ type PropertyMap = HashMap<String, Value>;
 
 /// A node with associated style data.
 /// 具有关联样式数据的节点
-struct StyledNode<'a> {
-    node: &'a Node, // pointer to a DOM node 指向 DOM 节点的指针
-    specified_values: PropertyMap,
-    children: Vec<StyledNode<'a>>
+pub struct StyledNode<'a> {
+    pub node: &'a Node, // pointer to a DOM node 指向 DOM 节点的指针
+    pub specified_values: PropertyMap,
+    pub children: Vec<StyledNode<'a>>
 }
+
+pub enum Display {
+    Inline,
+    Block,
+    Node
+}
+
 
 /**
     What's with all the 'a stuff? Those are lifetimes,
@@ -138,7 +143,7 @@ fn matching_rules<'a>(elem: &ElementData, stylesheet: &'a Stylesheet) -> Vec<Mat
 /// Apply styles to a single element, returning the specified values.
 /// 将样式应用于单个元素，返回指定的值
 fn specified_values(elem: &ElementData, stylesheet: &Stylesheet) -> PropertyMap {
-    let mut values = HashMap::new();
+    let mut values: PropertyMap = HashMap::new();
     let mut rules = matching_rules(elem, stylesheet);
 
     /// Go through the rules from lowest to highest specificity.
@@ -150,7 +155,7 @@ fn specified_values(elem: &ElementData, stylesheet: &Stylesheet) -> PropertyMap 
         }
     }
 
-    return values;
+    values
 }
 
 
@@ -174,9 +179,28 @@ pub fn style_tree<'a>(root: &'a Node, stylesheet: &'a Stylesheet) -> StyledNode<
     }
 }
 
+impl<'a> StyledNode<'a> {
+    /// Return the specified value of a property if it exists, otherwise `None`.
+    /// 如果存在，则返回属性的指定值，否则返回 `None`
+    pub fn value(&self, name: &str) -> Option<Value> {
+        self.specified_values.get(name).map(|v| *v.clone())
+    }
 
-/// Next I'll talk about some glaring omissions.
-/// 接下来我会谈谈一些明显的遗漏
+    /// The value of the `display` property (defaults to inline).
+    ///  `display` 属性的值（默认为内联）。
+    pub fn display(&self) -> Display {
+        match self.value("display") {
+            Some(Value::Keyword(s)) => match &*s {
+                "block" => Display::Block,
+                "none" => Display::Node,
+                _ => Display::Inline
+            },
+            _ => Display::Inline
+        }
+    }
+}
+
+
 
 
 

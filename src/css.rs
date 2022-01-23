@@ -23,7 +23,6 @@ pub struct Rule {
 // If the tag name is empty or '*' then it is a "universal selector" that can match any tag.
 // 如果标签名称为空或'*'，那么它是一个可以匹配任何标签的“通用选择器”
 
-#[deriving(Show)]
 pub enum Selector {
     Simple(SimpleSelector)
 }
@@ -76,24 +75,24 @@ impl Selector {
 // 例如："margin: auto;" 是一个 "Declaration"
 struct Declaration {
     pub name: String,
-    pub value: String
+    pub value: Value
 }
 
 // supports only a handful of CSS's many value types.
 // 仅支持少数 CSS 的值类型
-enum Value {
+pub enum Value {
     Keyword(String),
     Length(f32, Unit),
     ColorValue(Color),
     // insert more values here
 }
 
-enum Unit {
+pub enum Unit {
     Px,
     // insert more units here
 }
 
-struct Color {
+pub struct Color {
     r: u8,
     g: u8,
     b: u8,
