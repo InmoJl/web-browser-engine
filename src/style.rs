@@ -198,6 +198,16 @@ impl<'a> StyledNode<'a> {
             _ => Display::Inline
         }
     }
+
+    /// Return the specified value of property `name`, or property `fallback_name` if that doesn't
+    /// exist, or value `default` if neither does.
+    /// 返回属性 `name` 的指定值，如果没有，则返回属性 `fallback_name`
+    /// 存在，如果两者都不存在，则值为 `default`。
+    pub fn lookup(&self, name: &str, fallback_name: &str, default: &Value) -> Value {
+        self.value(name).unwrap_or_else(
+            || self.value(fallback_name).unwrap_or_else(|| default.clone())
+        )
+    }
 }
 
 

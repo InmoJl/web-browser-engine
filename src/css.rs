@@ -337,6 +337,15 @@ impl Parser {
 
 }
 
+impl Value {
+    pub fn to_px(&self) -> f32 {
+        match *self {
+            Value::Length(f, Unit::Px) => f,
+            _ => 0.0
+        }
+    }
+}
+
 // 判断输入的字符是否是允许使用的字符
 fn valid_identifier_char(c: char) -> bool {
     match c {
