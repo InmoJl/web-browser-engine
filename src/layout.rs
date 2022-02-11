@@ -1,8 +1,9 @@
 use std::default::Default;
-use crate::layout::BoxType::{BlockNode, InlineNode};
 use crate::style::{ StyledNode, Display };
 use crate::css::Unit::Px;
 use crate::css::Value::{Keyword, Length};
+
+pub use self::BoxType::{AnonymousBlock, InlineNode, BlockNode};
 
 /// Layout is all about boxes. A box is a rectangular section of a web page. It has a width,
 /// a height, and a position on the page.
@@ -33,18 +34,18 @@ pub struct Dimensions {
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Rect {
-    x: f32,
-    y: f32,
-    width: f32,
-    height: f32
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32
 }
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct EdgeSizes {
-    left: f32,
-    right: f32,
-    top: f32,
-    bottom: f32
+    pub left: f32,
+    pub right: f32,
+    pub top: f32,
+    pub bottom: f32
 }
 
 
@@ -68,7 +69,8 @@ pub struct EdgeSizes {
 
 /// The layout tree is a collection of boxes. A box has dimensions, and it may contain child boxes.
 /// 布局树是框的集合。一个盒子有尺寸，它可能包含子盒子。
-struct LayoutBox<'a> {
+#[derive(Debug)]
+pub struct LayoutBox<'a> {
     pub dimensions: Dimensions,
     pub box_type: BoxType<'a>,
     pub children: Vec<LayoutBox<'a>>
@@ -80,7 +82,8 @@ struct LayoutBox<'a> {
 /// But it will do for now.)
 /// 盒子可以是块节点、内联节点或匿名块盒子。
 /// （当我实现文本布局时，这需要更改，因为换行会导致单个内联节点拆分为多个框。但现在可以。）
-enum BoxType<'a> {
+#[derive(Debug)]
+pub enum BoxType<'a> {
     BlockNode(&'a StyledNode<'a>),
     InlineNode(&'a StyledNode<'a>),
     AnonymousBlock
@@ -101,7 +104,20 @@ enum BoxType<'a> {
 /// 现在我们可以遍历样式树，为每个节点构建一个 LayoutBox，然后为节点的子节点插入框。
 /// 如果节点的显示属性设置为“无”，则它不包含在布局树中。
 
+/// Transform a style tree into a layout tree.
+/// 将样式树转换为布局树
+pub fn layout_tree<'a>(node: &'a StyledNode<'a>, mut containing_block: Dimensions) -> LayoutBox<'a> {
+    // The layout algorithm expects the container height to start at 0.
+    // TODO: Save the initial containing block height, for calculating percent heights.
+    // 布局算法期望容器高度从 0 开始。
+    // TODO: 保存初始包含块高度，用于计算百分比高度
+    containing_block.content.height = 0.0;
 
+    let mut root_box = build_layout_tree(node);
+    root_box.layout(containing_block);
+
+    root_box
+}
 
 /// Build the tree of LayoutBoxes, but don't perform any layout calculations yet.
 /// 构建 LayoutBoxes 树，但不执行任何布局计算
@@ -143,8 +159,6 @@ impl<'a> LayoutBox<'a> {
     /// For block boxes in normal flow, this is just the box's parent.
     /// For the root element, it's the size of the browser window (or "viewport").
     /// 块的布局取决于其包含块的尺寸。对于正常流程中的块框，这只是框的父级。对于根元素，它是浏览器窗口（或“视口”）的大小
-
-
 
     /// You may remember from the previous article that a block's width depends on its parent,
     /// while its height depends on its children.

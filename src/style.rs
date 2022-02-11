@@ -17,16 +17,18 @@ use crate::dom::NodeType;
 
 /// Map from CSS property names to values.
 /// 从 CSS 属性名称映射到值
-type PropertyMap = HashMap<String, Value>;
+pub type PropertyMap = HashMap<String, Value>;
 
 /// A node with associated style data.
 /// 具有关联样式数据的节点
+#[derive(Debug)]
 pub struct StyledNode<'a> {
     pub node: &'a Node, // pointer to a DOM node 指向 DOM 节点的指针
     pub specified_values: PropertyMap,
     pub children: Vec<StyledNode<'a>>
 }
 
+#[derive(PartialEq)]
 pub enum Display {
     Inline,
     Block,
@@ -103,8 +105,6 @@ fn matches_simple_selector(elem: &ElementData, selector: &SimpleSelector) -> boo
         这与 Python（或 Haskell）中的 any 函数或 JavaScript 中的 some 方法相同。
      */
 }
-
-impl<'a> StyledNode<'a> {}
 
 /// Next we need to traverse the DOM tree. For each element in the tree,
 /// we will search the stylesheet for matching rules.
@@ -209,8 +209,3 @@ impl<'a> StyledNode<'a> {
         )
     }
 }
-
-
-
-
-

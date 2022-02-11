@@ -1,6 +1,7 @@
 
 // A CSS stylesheet is a series of rules.
 // CSS 样式表是一系列规则
+#[derive(Debug)]
 pub struct Stylesheet {
     pub rules: Vec<Rule>
 }
@@ -97,12 +98,12 @@ pub enum Unit {
     // insert more units here
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, Copy)]
 pub struct Color {
-    r: u8,
-    g: u8,
-    b: u8,
-    a: u8
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+    pub a: u8
 }
 
 // All other CSS syntax is unsupported, including @-rules, comments, and any selectors/values/units not mentioned above.
@@ -130,6 +131,10 @@ pub struct Color {
     例如，下面是解析单个选择器的代码
  */
 
+pub fn parse(source: String) -> Stylesheet {
+    let mut parser = Parser { pos: 0, input: source };
+    Stylesheet { rules: parser.parse_rules() }
+}
 
 struct Parser {
     pos: usize,
@@ -143,6 +148,18 @@ impl Parser {
     /// which I'll cover in the next article.
     /// 每个规则的选择器存储在一个排序的 vector 中，优先级最高的优先。这在匹配中很重要，我将在下一篇文章中介绍。
 
+    /// Parse a list of rule sets, separated by optional whitespace.
+    /// 解析规则集列表，由可选空格分隔
+    fn parse_rules(&mut self) -> Vec<Rule> {
+        let mut rules = Vec::new();
+        loop {
+            self.consume_whitespace();
+            if self.eof() { break }
+            rules.push(self.parse_rule());
+        }
+
+        rules
+    }
 
     /// Parse a rule set: `<selectors> { <declarations> }`.
     /// 解析规则集
@@ -175,7 +192,7 @@ impl Parser {
         // 比较选择器
         selectors.sort_by(|a, b| b.specificity().cmp(&a.specificity()));
 
-        return selectors;
+        selectors
     }
 
 
@@ -292,9 +309,6 @@ impl Parser {
         u8::from_str_radix(s, 16).unwrap()
     }
 
-
-
-
     /// Parse a property name or keyword
     /// 解析属性名称或关键字
     fn parse_identifier(&mut self) -> String {
@@ -353,4 +367,3 @@ fn valid_identifier_char(c: char) -> bool {
         _ => false,
     }
 }
-
