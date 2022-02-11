@@ -164,7 +164,7 @@ impl<'a> LayoutBox<'a> {
 
         // Determine where the box is located within its container.
         // 确定盒子在其容器内的位置
-        self.calclate_block_position(containing_block);
+        self.calculate_block_position(containing_block);
 
         // Recursively lay out the children of this box.
         // 递归地布置这个盒子的子元素
@@ -173,14 +173,23 @@ impl<'a> LayoutBox<'a> {
         // Parent height can depend on child height, so `calculate_height`
         // must be called *after* the children are laid out.
         // 父级高度可以依赖于子级高度，所以 `calculate_height` 必须在子级布局后调用
-        self.calclate_block_height();
+        self.calculate_block_height();
 
         // This function performs a single traversal of the layout tree,
         // doing width calculations on the way down and height calculations on the way back up.
         // A real layout engine might perform several tree traversals, some top-down and some bottom-up.
         // 此函数执行布局树的单次遍历，向下计算宽度，向上计算高度。一个真正的布局引擎可能会执行几个树遍历，一些自顶向下和一些自底向上。
+
+        // And that concludes the block layout algorithm.
+        // You can now call layout() on a styled HTML document,
+        // and it will spit out a bunch of rectangles with widths, heights, margins, etc. Cool, right?
+        // 块布局算法到此结束。您现在可以在样式化的 HTML 文档上调用 layout()，它会吐出一堆具有宽度、高度、边距等的矩形。很酷，对吗？
     }
 
+    /// Calculate the width of a block-level non-replaced element in normal flow.
+    /// Sets the horizontal margin/padding/border dimensions, and the `width`.
+    /// 计算正常流中块级非替换元素的宽度
+    /// 设置水平方向的 margin/padding/border 的尺寸, 和 `width`.
     fn calculate_block_width(&mut self, containing_block: Dimensions) {
         let style = self.get_style_node();
 
@@ -232,17 +241,33 @@ impl<'a> LayoutBox<'a> {
             ].iter().map(|v| v.to_px())
         );
 
+        // This is the minimum horizontal space needed for the box.
+        // If this isn't equal to the container width, we'll need to adjust something to make it equal.
+        // 这是盒子所需的最小水平空间。如果这不等于容器宽度，我们需要调整一些东西以使其相等。
+
+        // If the width or margins are set to 'auto', they can expand or contract to fit the available space.
+        // Following the spec, we first check if the box is too big. If so, we set any expandable margins to zero.
+        // 如果宽度或边距设置为“auto”，它们可以扩展或收缩以适应可用空间。按照规范，我们首先检查盒子是否太大。
+        // 如果是这样，我们将任何可扩展边距设置为零
         // If width is not auto and the total is wider than the container, treat auto margins as 0.
-        // 如果 width 不是 auto 并且总比容器宽，则将 auto 边距视为 0。
+        // 如果 width 不是 auto 并且比容器宽，则将 auto 边距设为 0。
         if width != auto && total > containing_block.content.width {
             if margin_left == auto {
                 margin_left = Length(0.0, Px);
             }
 
-            if margin_right = auto {
+            if margin_right == auto {
                 margin_right = Length(0.0, Px);
             }
         }
+
+
+        // If the box is too large for its container, it overflows the container.
+        // If it's too small, it will underflow, leaving extra space.
+        // We'll calculate the underflow—the amount of extra space left in the container.
+        // (If this number is negative, it is actually an overflow.)
+        // 如果盒子对于它的容器来说太大了，它就会溢出容器。如果它太小，它会下溢，留下额外的空间。
+        // 我们将计算下溢——容器中剩余的额外空间量。（如果这个数字是负数，它实际上是一个溢出。）
 
         // Adjust used values so that the above sum equals `containing_block.width`.
         // Each arm of the `match` should increase the total width by exactly `underflow`,
@@ -252,6 +277,11 @@ impl<'a> LayoutBox<'a> {
         // 之后的值都应该是 px 的绝对长度
         let underflow = containing_block.content.width - total;
 
+        // We now follow the spec's algorithm for eliminating any overflow or underflow by adjusting the expandable dimensions.
+        // If there are no 'auto' dimensions, we adjust the right margin.
+        // (Yes, this means the margin may be negative in the case of an overflow!)
+        // 我们现在遵循规范的算法，通过调整可扩展尺寸来消除任何溢出或下溢。
+        // 如果没有“auto”尺寸，我们会调整右边距。（是的，这意味着在溢出的情况下边距可能为负！）
         match (width == auto, margin_left == auto, margin_right == auto) {
             // If the values are overconstrained, calculate margin_right.
             // 如果值过度约束，则计算 margin_right
@@ -286,6 +316,9 @@ impl<'a> LayoutBox<'a> {
             }
         }
 
+
+        // 保存计算值
+
         let d = &mut self.dimensions;
         d.content.width = width.to_px();
 
@@ -298,6 +331,74 @@ impl<'a> LayoutBox<'a> {
         d.margin.left = margin_left.to_px();
         d.margin.right = margin_right.to_px();
 
+        // At this point, the constraints are met and any 'auto' values have been converted to lengths.
+        // The results are the the used values for the horizontal box dimensions, which we will store in the layout tree.
+        // 此时，满足约束并且任何“auto”值都已转换为长度。结果是水平框尺寸的使用值，我们将存储在布局树中
+    }
+
+    /// Finish calculating the block's edge sizes, and position it within its containing block.
+    /// Sets the vertical margin/padding/border dimensions, and the `x`, `y` values.
+    /// 完成计算 block 的边缘大小，并将其定位在其包含的块中
+    /// 设置垂直 margin/padding/border 尺寸，以及 x,y 值
+    /// The next step is simpler. This function looks up the remanining margin/padding/border styles,
+    /// and uses these along with the containing block dimensions to determine this block's position on the page.
+    /// 此函数查找剩余边距/填充/边框样式，并使用这些与包含块尺寸一起确定此块在页面上的位置。
+    fn calculate_block_position(&mut self, containing_block: Dimensions) {
+        let style = self.get_style_node();
+        let d = &mut self.dimensions;
+
+        // margin, border, and padding have initial value 0.
+        let zero = Length(0.0, Px);
+
+        // If margin-top or margin-bottom is `auto`, the used value is zero.
+        d.margin.top = style.lookup("margin-top", "margin", &zero).to_px();
+        d.margin.bottom = style.lookup("margin-bottom", "margin", &zero).to_px();
+
+        d.border.top = style.lookup("border-top-width", "border-width", &zero).to_px();
+        d.border.bottom = style.lookup("border-bottom-width", "border-width", &zero).to_px();
+
+        d.padding.top = style.lookup("padding-top", "padding", &zero).to_px();
+        d.padding.bottom = style.lookup("padding-bottom", "padding", &zero).to_px();
+
+        d.content.x = containing_block.content.x + d.margin.left + d.border.left + d.padding.left;
+
+        // Position the box below all the previous boxes in the container.
+        // 将框定位在容器中所有先前框的下方
+        d.content.y = containing_block.content.height + containing_block.content.y +
+                        d.margin.top + d.border.top + d.padding.top;
+
+        // Take a close look at that last statement, which sets the y position.
+        // This is what gives block layout its distinctive vertical stacking behavior.
+        // For this to work, we'll need to make sure the parent's `content.height` is updated after laying out each child.
+        // 仔细看看最后一条语句，它设置了 y 位置。这就是让块布局具有独特的垂直堆叠行为的原因。
+        // 为此，我们需要确保在布置每个孩子之后更新父母的 content.height
+    }
+
+    /// Here's the code that recursively lays out the box's contents.
+    /// As it loops through the child boxes, it keeps track of the total content height.
+    /// This is used by the positioning code (above) to find the vertical position of the next child.
+    /// 这是递归布置盒子内容的代码。当它遍历子框时，它会跟踪总内容高度。定位代码（上图）使用它来查找下一个孩子的垂直位置
+    fn layout_block_children(&mut self) {
+        let d = &mut self.dimensions;
+        for child in &mut self.children {
+            child.layout(*d);
+            // Track the height so each child is laid out below the previous content.
+            // 跟踪高度，以便将每个子项放置在前一个内容的下方
+            d.content.height = d.content.height + child.dimensions.margin_box().height;
+        }
+    }
+
+    /// By default, the box's height is equal to the height of its contents.
+    /// But if the 'height' property is set to an explicit length, we'll use that instead:
+    /// 默认情况下，盒子的高度等于其内容的高度。但是如果 'height' 属性设置为显式长度，我们将使用它来代替：
+    fn calculate_block_height(&mut self) {
+        // If the height is set to an explicit length, use that exact length.
+        // 如果高度设置为显式长度，则使用该确切长度
+        // Otherwise, just keep the value set by `layout_block_children`.
+        // 否则，只需保留 `layout_block_children` 设置的值
+        if let Some(Length(h, Px)) = self.get_style_node().value("height") {
+            self.dimensions.content.height = h;
+        }
     }
 
     fn new(box_type: BoxType) -> LayoutBox {
@@ -335,6 +436,46 @@ impl<'a> LayoutBox<'a> {
     }
 }
 
-fn sum<I>(iter: I) -> f32 where I: Iterator<Iter=f32> {
+impl Rect {
+    pub fn expanded_by(self, edge: EdgeSizes) -> Rect {
+        Rect {
+            x: self.x - edge.left,
+            y: self.y - edge.top,
+            width: self.width + edge.left + edge.right,
+            height: self.height + edge.top + edge.bottom
+        }
+    }
+}
+
+
+// The total vertical space taken up by each child is the height of its margin box
+// 每个孩子占据的总垂直空间是其边距框的高度
+
+impl Dimensions {
+    /// The area covered by the content area plus its padding.
+    /// 内容区域加上它的 padding 所覆盖的区域
+    pub fn padding_box(self) -> Rect {
+        self.content.expanded_by(self.padding)
+    }
+
+    /// The area covered by the content area plus padding and borders.
+    /// 内容区域加上 padding 和 border 所覆盖的区域
+    pub fn border_box(self) -> Rect {
+        self.padding_box().expanded_by(self.border)
+    }
+
+    /// The area covered by the content area plus padding, borders, and margin.
+    /// 内容区域加上 padding、border 和 margin 所覆盖的区域
+    pub fn margin_box(self) -> Rect {
+        self.border_box().expanded_by(self.margin)
+    }
+}
+
+// For simplicity, this does not implement margin collapsing.
+// A real layout engine would allow the bottom margin of one box to overlap the top margin of the next box,
+// rather than placing each margin box completely below the previous one.
+// 为简单起见，这并没有实现边距折叠。真正的布局引擎将允许一个框的下边距与下一个框的上边距重叠，而不是将每个边距框完全放在前一个框的下方
+
+fn sum<I>(iter: I) -> f32 where I: Iterator<Item=f32> {
     iter.fold(0., |a, b| a + b)
 }

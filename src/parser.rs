@@ -1,6 +1,22 @@
 use std::collections::HashMap;
 use crate::dom;
 
+// Parse an HTML document and return the root element.
+// 解析 HTML 文档并返回根元素
+// 将所有这些放在一起，将整个 HTML 文档解析为 DOM 树
+// 如果文档没有明确包含根节点，此函数将为文档创建一个根节点；这类似于真正的 HTML 解析器所做的
+pub fn parse(source: String) -> dom::Node {
+    let mut nodes = Parser { pos: 0, input: source }.parse_nodes();
+
+    // If the document contains a root element, just return it. Otherwise, create one.
+    // 如果文档包含根元素，则返回它。否则，创建一个
+    if nodes.len() == 1 {
+        nodes.swap_remove(0)
+    } else {
+        dom::element("html".to_string(), HashMap::new(), nodes)
+    }
+}
+
 pub struct Parser {
     pos: usize,
     input: String
@@ -192,21 +208,4 @@ impl Parser {
         return nodes;
     }
 
-    // Parse an HTML document and return the root element.
-    // 解析 HTML 文档并返回根元素
-    // 将所有这些放在一起，将整个 HTML 文档解析为 DOM 树
-    // 如果文档没有明确包含根节点，此函数将为文档创建一个根节点；这类似于真正的 HTML 解析器所做的
-    pub fn parse(source: String) -> dom::Node {
-        let mut nodes = Parser { pos: 0, input: source }.parse_nodes();
-
-        // If the document contains a root element, just return it. Otherwise, create one.
-        // 如果文档包含根元素，则返回它。否则，创建一个
-        if nodes.len() == 1 {
-            nodes.swap_remove(0)
-        } else {
-            dom::element("html".to_string(), HashMap::new(), nodes)
-        }
-    }
 }
-
-
