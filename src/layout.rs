@@ -1,6 +1,6 @@
+use std::default::Default;
 use crate::layout::BoxType::{BlockNode, InlineNode};
 use crate::style::{ StyledNode, Display };
-use std::default::Default;
 use crate::css::Unit::Px;
 use crate::css::Value::{Keyword, Length};
 
@@ -160,7 +160,7 @@ impl<'a> LayoutBox<'a> {
         // 子宽度可以依赖于父宽度，所以我们需要计算
         // this box's width before laying out its children.
         // 这个盒子在布局它的孩子之前的宽度
-        self.calclate_block_width(containing_block);
+        self.calculate_block_width(containing_block);
 
         // Determine where the box is located within its container.
         // 确定盒子在其容器内的位置
@@ -191,6 +191,15 @@ impl<'a> LayoutBox<'a> {
         // margin, border, and padding have initial value 0
         let zero = Length(0.0, Px);
 
+
+        // This uses a helper function called lookup, which just tries a series of values in sequence.
+        // If the first property isn't set, it tries the second one. If that's not set either,
+        // it returns the given default value.
+        // This provides an incomplete (but simple) implementation of shorthand properties and initial values.
+        // 这使用了一个名为lookup 的辅助函数，它只是按顺序尝试一系列值。如果第一个属性没有设置，它会尝试第二个。
+        // 如果也没有设置，则返回给定的默认值。这提供了速记属性和初始值的不完整（但简单）实现。
+
+
         let mut margin_left = style.lookup("margin-left", "margin", &zero);
         let mut margin_right = style.lookup("margin-right", "margin", &zero);
 
@@ -199,6 +208,20 @@ impl<'a> LayoutBox<'a> {
 
         let mut padding_left = style.lookup("padding-left", "padding", &zero);
         let mut padding_right = style.lookup("padding-right", "padding", &zero);
+
+
+        // Since a child can't change its parent's width,
+        // it needs to make sure its own width fits the parent's.
+        // The CSS spec expresses this as a set of constraints and an algorithm for solving them.
+        // The following code implements that algorithm.
+        // 由于子元素不能改变其父元素的宽度，它需要确保自己的宽度适合父元素的。
+        // CSS 规范将其表示为一组约束和解决它们的算法。以下代码实现了该算法。
+
+        // First we add up the margin, padding, border, and content widths.
+        // The to_px helper method converts lengths to their numerical values.
+        // If a property is set to 'auto', it returns 0 so it doesn't affect the sum.
+        // 首先，我们将边距、内边距、边框和内容宽度相加。 to_px 辅助方法将长度转换为它们的数值。
+        // 如果属性设置为“自动”，则返回 0，因此不会影响总和。
 
         let total = sum(
             [
@@ -209,11 +232,71 @@ impl<'a> LayoutBox<'a> {
             ].iter().map(|v| v.to_px())
         );
 
+        // If width is not auto and the total is wider than the container, treat auto margins as 0.
+        // 如果 width 不是 auto 并且总比容器宽，则将 auto 边距视为 0。
         if width != auto && total > containing_block.content.width {
             if margin_left == auto {
                 margin_left = Length(0.0, Px);
             }
+
+            if margin_right = auto {
+                margin_right = Length(0.0, Px);
+            }
         }
+
+        // Adjust used values so that the above sum equals `containing_block.width`.
+        // Each arm of the `match` should increase the total width by exactly `underflow`,
+        // and afterward all values should be absolute lengths in px.
+        // 调整使用的值，使上述总和等于 `containing_block.width`
+        // `match` 的每个分支都应该增加 `underflow` 的总宽度
+        // 之后的值都应该是 px 的绝对长度
+        let underflow = containing_block.content.width - total;
+
+        match (width == auto, margin_left == auto, margin_right == auto) {
+            // If the values are overconstrained, calculate margin_right.
+            // 如果值过度约束，则计算 margin_right
+            (false, false, false) => {
+                margin_right = Length(margin_right.to_px() + underflow, Px);
+            }
+
+            // If exactly one size is auto, its used value follows from the equality.
+            // 如果恰好有一种尺寸是自动的，则其使用的值遵循等式。
+            (false, true, false) => { margin_left  = Length(underflow, Px); }
+            (false, false, true) => { margin_right = Length(underflow, Px); }
+
+            // If width is set to auto, any other auto values become 0.
+            // 如果宽度设置为自动，任何其他自动值都变为 0
+            (true, _, _) => {
+                if margin_left == auto { margin_left = Length(0.0, Px); }
+                if margin_right == auto { margin_right = Length(0.0, Px); }
+
+                if underflow >= 0.0 {
+                    width = Length(underflow, Px);
+                } else {
+                    width = Length(0.0, Px);
+                    margin_right = Length(margin_right.to_px() + underflow, Px);
+                }
+            }
+
+            // If margin-left and margin-right are both auto, their used values are equal.
+            // 如果 margin-left 和 margin-right 都是自动的，它们使用的值是相等的
+            (false, true, true) => {
+                margin_left = Length(underflow / 2.0, Px);
+                margin_right = Length(underflow / 2.0, Px);
+            }
+        }
+
+        let d = &mut self.dimensions;
+        d.content.width = width.to_px();
+
+        d.padding.left = padding_left.to_px();
+        d.padding.right = padding_right.to_px();
+
+        d.border.left = border_left.to_px();
+        d.border.right = border_right.to_px();
+
+        d.margin.left = margin_left.to_px();
+        d.margin.right = margin_right.to_px();
 
     }
 
