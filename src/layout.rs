@@ -226,11 +226,11 @@ impl<'a> LayoutBox<'a> {
         let mut margin_left = style.lookup("margin-left", "margin", &zero);
         let mut margin_right = style.lookup("margin-right", "margin", &zero);
 
-        let mut border_left = style.lookup("border-left-width", "border-width", &zero);
-        let mut border_right = style.lookup("border-right-width", "border-width", &zero);
+        let border_left = style.lookup("border-left-width", "border-width", &zero);
+        let border_right = style.lookup("border-right-width", "border-width", &zero);
 
-        let mut padding_left = style.lookup("padding-left", "padding", &zero);
-        let mut padding_right = style.lookup("padding-right", "padding", &zero);
+        let padding_left = style.lookup("padding-left", "padding", &zero);
+        let padding_right = style.lookup("padding-right", "padding", &zero);
 
 
         // Since a child can't change its parent's width,

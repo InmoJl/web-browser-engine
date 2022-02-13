@@ -24,7 +24,6 @@
 // For now there is only one type of DisplayCommand, a solid-color rectangle:
 // Robinson 的显示列表是一个 DisplayCommands 的向量。目前只有一种 DisplayCommand，即纯色矩形:
 
-use std::alloc::Layout;
 use crate::css::Color;
 use crate::css::Value;
 use crate::layout::{LayoutBox, Rect, BlockNode, InlineNode, AnonymousBlock};
@@ -141,6 +140,7 @@ fn render_borders(list: &mut DisplayList, layout_box: &LayoutBox) {
 // Now that we've built the display list,
 // we need to turn it into pixels by executing each DisplayCommand. We'll store the pixels in a Canvas
 // 现在我们已经构建了显示列表，我们需要通过执行每个 DisplayCommand 将其转换为像素。我们将像素存储在 Canvas 中
+#[derive(Debug)]
 pub struct Canvas {
     pub pixels: Vec<Color>,
     pub width: usize,

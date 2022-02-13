@@ -360,7 +360,7 @@ impl Value {
     }
 }
 
-// 判断输入的字符是否是允许使用的字符
+/// 判断输入的字符是否是允许使用的字符
 fn valid_identifier_char(c: char) -> bool {
     match c {
         'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' => true, // TODO: Include U+00A0 and higher.

@@ -1,15 +1,7 @@
-#![allow(unstable)]
-
-extern crate getopts;
 extern crate image;
 
 use std::default::Default;
-use std::env::args;
-use std::env;
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
-use image::{ImageBuffer, RgbaImage};
+use std::fs;
 
 mod html;
 mod dom;
@@ -20,49 +12,19 @@ mod painting;
 
 fn main() {
 
-    // 解析命令行选项
-    let mut opts = getopts::Options::new();
-    opts.optopt("h", "html", "HTML document", "FILENAME");
-    opts.optopt("c", "css", "CSS stylesheet", "FILENAME");
-    opts.optopt("o", "output", "Output file", "FILENAME");
-    let args: Vec<String> = env::args().collect();
-    let matches = match opts.parse(&args[1..]) {
-        Ok(m) => m,
-        Err(f) => panic!(f.to_string())
-    };
+    // 取得当前项目路径
+    let mut path = std::env::current_dir().unwrap();
+    path.push("examples/index");
 
     // 解析 html
-    let html_source = String::from(
-        "<html>" +
-            "<div class='a'>" +
-                "<div class='b'>" +
-                    "<div class='c'>" +
-                        "<div class='d'>" +
-                            "<div class='e'>" +
-                                "<div class='f'>" +
-                                    "<div class='g'></div>" +
-                                "</div>" +
-                            "</div>" +
-                        "</div>" +
-                    "</div>" +
-                "</div>" +
-            "</div>" +
-        "</html>"
-    );
+    path.set_extension("html");
+    let html_source = read_source(path.to_str().unwrap());
     let html_tree = html::parse(html_source);
     // println!("{:#?}", html_tree);
 
     // 解析 css
-    let css_source = String::from(
-    "* { display: block; padding: 12px; }",
-        ".a { background: #ff0000; }",
-        ".b { background: #ffa500; }",
-        ".c { background: #ffff00; }",
-        ".d { background: #008000; }",
-        ".e { background: #0000ff; }",
-        ".f { background: #4b0082; }",
-        ".g { background: #800080; }"
-    );
+    path.set_extension("css");
+    let css_source = read_source(path.to_str().unwrap());
     let stylesheet_tree  = css::parse(css_source);
     // println!("{:#?}", stylesheet_tree );
 
@@ -83,11 +45,9 @@ fn main() {
 
     // 创建绘制画布 栅格化
     let canvas = painting::paint(&layout_tree, initial_containing_block.content);
+    // println!("{:#?}", canvas);
 
-    // 创建图片文件，将画布作为图片输出
-    let filename = matches.opt_str("o").unwrap_or("output.png".to_string());
-    let file = File::create(&Path::new(&filename)).unwrap();
-    // 保存图片
+    // 将画布保存为图片
     let (w, h) = (canvas.width as u32, canvas.height as u32);
     let buffer: Vec<image::Rgba<u8>> = unsafe {
         std::mem::transmute(canvas.pixels)
@@ -97,7 +57,7 @@ fn main() {
         h,
         Box::new(|x: u32, y: u32| buffer[(y * w + x) as usize])
     );
-    let result = img.save(filename);
+    let result = img.save("test.png");
 
     match result {
         Ok(_) => println!("成功"),
@@ -105,16 +65,9 @@ fn main() {
     }
 }
 
-fn read_source(arg_filename: Option<String>, default_filename: &str) -> String {
-
-    let path = match arg_filename {
-        Some(ref filename) => filename,
-        None => default_filename,
-    };
-
-    let mut file = File::open(path).unwrap();
-    let mut source = String::new();
-    file.read_to_string(&mut source).unwrap();
-
-    source
+fn read_source(path: &str) -> String {
+    match fs::read_to_string(path) {
+        Ok(source) => source,
+        Err(_) => panic!("读取失败")
+    }
 }
